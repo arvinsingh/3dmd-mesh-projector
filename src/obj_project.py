@@ -150,15 +150,15 @@ def create_overlay_image(image: np.ndarray, vertices_2d: np.ndarray,
 
 
 def process_frame_projections(seq_dir: Path, frame_idx: int, 
-                            ground_truth_dir: Path, output_dir: Path,
+                            mesh_dir: Path, output_dir: Path,
                             cameras: List[str] = None) -> Dict[str, Path]:
     """
     Process all camera projections for a single frame.
     
     Args:
-        seq_dir: Sequence directory containing frames and calibration
+        seq_dir: Sequence directory containing frames and calibration files
         frame_idx: Frame index to process
-        ground_truth_dir: Directory containing ground truth .obj files
+        mesh_dir: Directory containing mesh (.obj) files
         output_dir: Output directory for overlay images
         cameras: List of camera IDs to process (default: all available)
         
@@ -166,17 +166,28 @@ def process_frame_projections(seq_dir: Path, frame_idx: int,
         Dictionary mapping camera ID to output file path
     """
     ds = SeqDataset(seq_dir)
-    calibrations = load_all_calibrations(ds.calib_dir)
+    calibrations = load_all_calibrations(seq_dir)
     
     if cameras is None:
         cameras = list(calibrations.keys())
     
-    # find corresponding ground truth mesh
-    gt_files = list(ground_truth_dir.glob(f"*_{frame_idx:03d}.obj"))
-    if not gt_files:
-        raise FileNotFoundError(f"No ground truth mesh found for frame {frame_idx}")
+    # find corresponding mesh file - look for various naming patterns
+    mesh_patterns = [
+        f"*_{frame_idx:03d}.obj",        # pattern: prefix_000.obj  
+        f"frame_{frame_idx:03d}.obj",    # pattern: frame_000.obj
+        f"{frame_idx:03d}.obj",          # pattern: 000.obj
+        f"mesh_{frame_idx:03d}.obj",     # pattern: mesh_000.obj
+    ]
     
-    mesh_path = gt_files[0]  # use first matching file
+    mesh_path = None
+    for pattern in mesh_patterns:
+        mesh_files = list(mesh_dir.glob(pattern))
+        if mesh_files:
+            mesh_path = mesh_files[0]  # use first matching file
+            break
+    
+    if mesh_path is None:
+        raise FileNotFoundError(f"No mesh file found for frame {frame_idx} in {mesh_dir}. Tried patterns: {mesh_patterns}")
     
     output_dir.mkdir(parents=True, exist_ok=True)
     
@@ -217,20 +228,19 @@ def process_frame_projections(seq_dir: Path, frame_idx: int,
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Project ground truth meshes onto camera images"
+        description="Project meshes onto camera images"
     )
     parser.add_argument(
         "seq_dir", type=Path,
-        help="Path to sequence directory (e.g., data/sequence1)"
+        help="Path to sequence directory containing images and calibration files"
     )
     parser.add_argument(
         "--frame", type=int, default=0,
         help="Frame index to process (default: 0)"
     )
     parser.add_argument(
-        "--ground-truth", type=Path, 
-        default=Path("data/ground-truth"),
-        help="Ground truth directory (default: data/ground-truth)"
+        "--mesh-dir", type=Path, required=True,
+        help="Directory containing mesh (.obj) files"
     )
     parser.add_argument(
         "--output", type=Path,
@@ -249,13 +259,13 @@ def main():
         print(f"ERROR: Sequence directory not found: {args.seq_dir}")
         return 1
     
-    if not args.ground_truth.exists():
-        print(f"ERROR: Ground truth directory not found: {args.ground_truth}")
+    if not args.mesh_dir.exists():
+        print(f"ERROR: Mesh directory not found: {args.mesh_dir}")
         return 1
     
     try:
         results = process_frame_projections(
-            args.seq_dir, args.frame, args.ground_truth, 
+            args.seq_dir, args.frame, args.mesh_dir, 
             args.output, args.cameras
         )
         

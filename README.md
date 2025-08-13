@@ -11,6 +11,8 @@ A Python tool for projecting 3D meshes onto 2D camera images from 3dMD multi-cam
 
 This tool integrates into a broader 4D facial analysis pipeline, supporting 3dMD rig setups and my custom 3D reconstruction workflow. Ideal for validating alignment, visualizing reprojection accuracy, and debugging stereo reconstruction artifacts.
 
+Core [3D Facial reconstruction pipeline.](github.com:arvinsingh/3DFacialReconstruction)
+
 ## Camera Setup
 
 The system supports 3dMD 6-camera configuration
@@ -38,29 +40,28 @@ pip install -e .
 
 ## Data Structure
 
-Data should be organized like 
+Data should be organized like this:
 
 ```
 data/
-└── sequence1/
-    ├── calib/
-    │   ├── calib_1A.tka
-    │   ├── calib_1B.tka
-    │   ├── calib_1C.tka
-    │   ├── calib_2A.tka
-    │   ├── calib_2B.tka
-    │   └── calib_2C.tka
-    ├── frames/
-    │   ├── STEREO_1A_000.bmp
-    │   ├── STEREO_1B_000.bmp
-    │   ├── STEREO_2A_000.bmp
-    │   ├── STEREO_2B_000.bmp
-    │   ├── TEXTURE_1C_000.bmp
-    │   └── TEXTURE_2C_000.bmp
-    └── meshes/
-        ├── frame_000.obj    # 3dMD ground-truth or reconstructed mesh
-        ├── frame_001.obj
-        └── ...
+└── sequence/
+    ├── calib_1A.tka
+    ├── calib_1B.tka
+    ├── calib_1C.tka
+    ├── calib_2A.tka
+    ├── calib_2B.tka
+    ├── calib_2C.tka
+    ├── STEREO_1A_000.bmp
+    ├── STEREO_1B_000.bmp
+    ├── STEREO_2A_000.bmp
+    ├── STEREO_2B_000.bmp
+    ├── TEXTURE_1C_000.bmp
+    └── TEXTURE_2C_000.bmp
+    
+meshes/
+├── frame_000.obj    # 3dMD ground-truth or reconstructed mesh
+├── frame_001.obj
+└── ...
 ```
 
 ## Calibration File Format
@@ -80,27 +81,40 @@ The tool reads 3dMD .tka calibration files with the following parameters:
 
 ```bash
 # List available data
-python main.py data/sequence1 --list
+python main.py data/sequence --list --mesh-dir meshes/
 
 # Project mesh onto all cameras
-python main.py data/sequence1 --project --frame 0
+python main.py data/sequence --project --frame 0 --mesh-dir meshes/
 
 # View 3D mesh interactively
-python main.py data/sequence1 --view-mesh data/sequence1/meshes/frame_000.obj
+python main.py data/sequence --view-mesh meshes/frame_000.obj
 ```
 
 ### Project Different Mesh Types
 
 ```bash
 # Project 3dMD ground-truth mesh
-python main.py data/sequence1 --project --frame 0
+python main.py data/sequence --project --frame 0 --mesh-dir meshes/
 
-# Project reconstructed mesh (same command works)
-python main.py data/sequence1 --project --frame 5
+# Project reconstructed mesh from different directory
+python main.py data/sequence --project --frame 5 --mesh-dir reconstructed_meshes/
 
 # Project onto specific cameras only
-python main.py data/sequence1 --project --frame 0 --cameras 1A 1B
+python main.py data/sequence --project --frame 0 --mesh-dir meshes/ --cameras 1A 1B
+
+# Process multiple frames
+python main.py data/sequence --project --frame 0 --mesh-dir meshes/
+python main.py data/sequence --project --frame 1 --mesh-dir meshes/
+python main.py data/sequence --project --frame 2 --mesh-dir meshes/
 ```
+
+### Mesh File Naming Patterns
+
+The tool automatically detects meshes with these naming patterns:
+- `prefix_000.obj` (e.g., `XAN1_000.obj`)
+- `frame_000.obj` 
+- `000.obj`
+- `mesh_000.obj`
 
 ## Output
 

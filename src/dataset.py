@@ -15,12 +15,12 @@ class FrameBundle:
 class SeqDataset:
     def __init__(self, root: Path):
         self.root = Path(root)
-        self.frames_dir = self.root / "frames"
-        self.calib_dir = self.root / "calib"
-        if not self.frames_dir.exists():
-            raise FileNotFoundError(self.frames_dir)
+        self.frames_dir = self.root  # Images and calibration files are in the same directory
+        # Calibration files are expected to be in the same directory as images
+        if not self.root.exists():
+            raise FileNotFoundError(self.root)
         # discover max index by listing one camera pattern
-        example = sorted(self.frames_dir.glob("STEREO_1A_*.bmp"))
+        example = sorted(self.root.glob("STEREO_1A_*.bmp"))
         if not example:
             raise FileNotFoundError("No frames found for STEREO_1A_*.bmp")
         self.num_frames = len(example)
@@ -30,7 +30,7 @@ class SeqDataset:
         for cam in cams:
             prefix = "STEREO" if cam.endswith(("A", "B")) else "TEXTURE"
             name = f"{prefix}_{cam}_{idx:03d}.bmp"
-            path = self.frames_dir / name
+            path = self.root / name  # Images are in the root directory
             img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE if prefix == "STEREO" else cv2.IMREAD_COLOR)
             if img is None:
                 raise FileNotFoundError(path)

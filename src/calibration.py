@@ -109,15 +109,16 @@ def read_tka_file(path: Path) -> CameraCalibration:
     )
 
 
-def load_all_calibrations(calib_dir: Path) -> Dict[str, CameraCalibration]:
+def load_all_calibrations(seq_dir: Path) -> Dict[str, CameraCalibration]:
+    """Load calibration files from the sequence directory (same directory as images)."""
     cams: Dict[str, CameraCalibration] = {}
     for cam in ["1A", "1B", "1C", "2A", "2B", "2C"]:
-        p = calib_dir / f"calib_{cam}.tka"
+        p = seq_dir / f"calib_{cam}.tka"
         if not p.exists():
             continue
         cams[cam] = read_tka_file(p)
     if not cams:
-        raise FileNotFoundError(f"No calib_*.tka files in {calib_dir}")
+        raise FileNotFoundError(f"No calib_*.tka files in {seq_dir}")
     return cams
 
 

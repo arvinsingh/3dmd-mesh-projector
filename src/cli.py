@@ -15,7 +15,7 @@ from calibration import load_all_calibrations
 from dataset import SeqDataset
 
 
-def list_available_data(seq_dir: Path, ground_truth_dir: Path):
+def list_available_data(seq_dir: Path, mesh_dir: Path):
     """List available data for processing."""
     print("\nAvailable Data Summary")
     print("=" * 50)
@@ -27,16 +27,16 @@ def list_available_data(seq_dir: Path, ground_truth_dir: Path):
         print(f"   Frame indices: 0-{ds.num_frames-1}")
         
         try:
-            calibrations = load_all_calibrations(ds.calib_dir)
+            calibrations = load_all_calibrations(seq_dir)
             print(f"   Available cameras: {list(calibrations.keys())}")
         except Exception as e:
             print(f"   Calibration error: {e}")
     else:
         print(f"ERROR: Sequence directory not found: {seq_dir}")
     
-    if ground_truth_dir.exists():
-        obj_files = list(ground_truth_dir.glob("*.obj"))
-        print(f"\nGround Truth Directory: {ground_truth_dir}")
+    if mesh_dir.exists():
+        obj_files = list(mesh_dir.glob("*.obj"))
+        print(f"\nMesh Directory: {mesh_dir}")
         print(f"   Available meshes: {len(obj_files)}")
         if obj_files:
             examples = sorted(obj_files)[:5]
@@ -45,21 +45,21 @@ def list_available_data(seq_dir: Path, ground_truth_dir: Path):
             if len(obj_files) > 5:
                 print(f"   ... and {len(obj_files) - 5} more")
     else:
-        print(f"ERROR: Ground truth directory not found: {ground_truth_dir}")
+        print(f"ERROR: Mesh directory not found: {mesh_dir}")
 
 
-def create_projections(seq_dir: Path, frame_idx: int, ground_truth_dir: Path, 
+def create_projections(seq_dir: Path, frame_idx: int, mesh_dir: Path, 
                       output_dir: Path, cameras: List[str] = None):
     """Create mesh projection overlays."""
     print(f"\nCreating Mesh Projections")
     print(f"Sequence: {seq_dir}")
     print(f"Frame: {frame_idx}")
-    print(f"Ground Truth: {ground_truth_dir}")
+    print(f"Mesh Directory: {mesh_dir}")
     print(f"Output: {output_dir}")
     
     try:
         results = process_frame_projections(
-            seq_dir, frame_idx, ground_truth_dir, output_dir, cameras
+            seq_dir, frame_idx, mesh_dir, output_dir, cameras
         )
         
         if results:
@@ -95,13 +95,13 @@ def main():
         epilog="""
 Examples:
   # List available data
-  python main_entry.py data/sequence1 --list
+  python main_entry.py data/sequence1 --list --mesh-dir data/meshes
   
   # Create projection overlays for frame 5
-  python main_entry.py data/sequence1 --project --frame 5
+  python main_entry.py data/sequence1 --project --frame 5 --mesh-dir data/meshes
   
   # View existing mesh
-  python main_entry.py data/sequence1 --view-mesh data/ground-truth/XAN1_000.obj
+  python main_entry.py data/sequence1 --view-mesh data/meshes/frame_000.obj
         """
     )
     
@@ -130,9 +130,8 @@ Examples:
         help="Frame index to process (default: 0)"
     )
     parser.add_argument(
-        "--ground-truth", type=Path,
-        default=Path("data/ground-truth"),
-        help="Ground truth directory (default: data/ground-truth)"
+        "--mesh-dir", type=Path, required=True,
+        help="Directory containing mesh (.obj) files"
     )
     parser.add_argument(
         "--output", type=Path,
@@ -153,7 +152,10 @@ Examples:
     
     # handle list command
     if args.list:
-        list_available_data(args.seq_dir, args.ground_truth)
+        if not args.mesh_dir:
+            print("ERROR: --mesh-dir is required for --list command")
+            return 1
+        list_available_data(args.seq_dir, args.mesh_dir)
         return 0
     
     # handle view-mesh command
@@ -163,11 +165,15 @@ Examples:
     
     # handle project command
     if args.project:
+        if not args.mesh_dir:
+            print("ERROR: --mesh-dir is required for --project command")
+            return 1
+            
         print("3D Mesh Projection System")
         print("=" * 40)
         
         create_projections(
-            args.seq_dir, args.frame, args.ground_truth,
+            args.seq_dir, args.frame, args.mesh_dir,
             args.output / "projections", args.cameras
         )
         
